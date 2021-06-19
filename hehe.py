@@ -20,7 +20,7 @@ def generate_point():
     angle = random.random() * 2 * math.pi
     return CIRCLE_CENTER[0] + r * math.cos(angle), CIRCLE_CENTER[1] + r * math.sin(angle)
 
-MAX_SPEED = 1#0.1
+MAX_SPEED = 0.1
 
 def generate_velocity():
     angle = random.random() * 2 * math.pi
@@ -36,10 +36,21 @@ def update_point(point, velocity, dt=1):
 def check_collision(point):
     x = point[0]
     y = point[1]
-    OFFSITE = 10
-    if math.pow(x - CIRCLE_CENTER[0] , 2) + math.pow(y - CIRCLE_CENTER[1], 2) < CIRCLE_RADIUS*CIRCLE_RADIUS - OFFSITE:
+    OFFSITE = 9
+    left_side = math.pow(x - CIRCLE_CENTER[0] , 2) + math.pow(y - CIRCLE_CENTER[1], 2)
+    r_2 = math.pow(CIRCLE_RADIUS - OFFSITE, 2)
+    diff = r_2 - left_side
+    if diff > 0:
         return False
     return True
+
+#to jest dosc zjebane bo nie umiem maty xD
+def reposition(point, velocity): 
+    dist = math.sqrt(math.pow(point[0]-CIRCLE_CENTER[0], 2) + math.pow(point[1]-CIRCLE_CENTER[1], 2))
+    opp_angle = velocity[0] + math.pi
+    if opp_angle > 2*math.pi:
+        opp_angle -= 2*math.pi
+    return update_point(point, (opp_angle, dist))
 
 NUMBER_OF_POINTS = 50
 
@@ -47,6 +58,7 @@ screen = pygame.display.set_mode(SIZE)
 clock = pygame.time.Clock()
 points = [generate_point() for i in range(NUMBER_OF_POINTS)]
 velocites = [generate_velocity() for i in range(NUMBER_OF_POINTS)]
+skip_checking = [0 for i in range(NUMBER_OF_POINTS)]
 dt = 0
 while True:
     # EVENTS
@@ -58,11 +70,14 @@ while True:
     # update points
     for (i, velocity) in enumerate(velocites):
         points[i] = update_point(points[i], velocity, dt)
-        if check_collision(points[i]):
+        if skip_checking[i] == 0 and check_collision(points[i]):
             new_angle = velocites[i][0] + math.pi
             if new_angle >  2 * math.pi:
                 new_angle -= 2 * math.pi
-            velocites[i] = new_angle, velocites[i][1] 
+            velocites[i] = new_angle, velocites[i][1]
+            skip_checking[i] = 3
+        elif skip_checking[i] > 0:
+            skip_checking[i] -= 1
     
     # DRAWING 
     screen.fill(BLACK)

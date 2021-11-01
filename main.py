@@ -11,8 +11,9 @@ BLACK = 0,0,0
 WHITE = 255,255,255
 
 POINT_RADIUS =  4
-MAX_SPEED = 0.3#0.9
-NUMBER_OF_POINTS = 300
+MAX_SPEED = 0.2#0.9
+NUMBER_OF_POINTS = 200
+IGNORE_POINT_COL_N = MAX_SPEED * 50
 
 CIRCLE_CENTER = WIDTH / 2, HEIGHT / 2
 CIRCLE_RADIUS = 350
@@ -47,7 +48,6 @@ def update_point(point, velocity, dt=1):
 def check_collision(point):
     x = point[0]
     y = point[1]
-    OFFSITE = 0
     if math.pow(x - CIRCLE_CENTER[0] , 2) + math.pow(y - CIRCLE_CENTER[1], 2) < math.pow(CIRCLE_RADIUS_FOR_COLLISION,2):
         return False
     return True
@@ -69,12 +69,24 @@ def do_collision(point, velocity):
     new_vector = get_reflection_vector(velocity, normal_vector_on_circle)
     return intersection, new_vector 
 
+def check_collision_points(point1, point2):
+    x1, y1 = point1
+    x2, y2 = point2
+    if math.fabs(x1 - x2) < POINT_RADIUS*2 and math.fabs(y1 - y2) < POINT_RADIUS*2:
+        return True
+    return False
+
+def do_collision_points(v1, v2):
+    x1, y1 = v1
+    x2, y2 = v2
+    return (-x1, -y1), (-x2, -y2)
+
 screen = pygame.display.set_mode(SIZE)
 clock = pygame.time.Clock()
 points = [generate_point() for i in range(NUMBER_OF_POINTS)]
 velocites = [generate_velocity() for i in range(NUMBER_OF_POINTS)]
-skip_checking = [0 for i in range(NUMBER_OF_POINTS)]
 colors = [gen_random_color() for i in range(NUMBER_OF_POINTS)]
+ignore_col = [[0 for j in range(NUMBER_OF_POINTS)] for i in range(NUMBER_OF_POINTS)]
 dt = 0
 while True:
     # EVENTS
@@ -83,14 +95,19 @@ while True:
             sys.exit()
      
     # LOGIC
-    # update points
     for (i, velocity) in enumerate(velocites):
         points[i] = update_point(points[i], velocity, dt)
-        if skip_checking[i] == 0 and check_collision(points[i]):
+        # collisions with circle
+        if check_collision(points[i]):
             points[i], velocites[i] = do_collision(points[i], velocity)
-            skip_checking[i] = 3
-        elif skip_checking[i] > 0:
-            skip_checking[i] -= 1
+        # collisions between points
+        for j in range(i+1, len(points)):
+            if ignore_col[i][j] == 0 and check_collision_points(points[i], points[j]):
+                velocites[i], velocites[j] = do_collision_points(velocites[i], velocites[j])
+                ignore_col[i][j] = IGNORE_POINT_COL_N
+            ignore_col[i][j] = 0 if ignore_col[i][j] <= 0 else ignore_col[i][j] - 1
+
+
     # DRAWING 
     screen.fill(BLACK)
     # master circlescrim during the m
